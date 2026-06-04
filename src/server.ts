@@ -54,6 +54,8 @@ app.post('/ask', async (req: express.Request, res: express.Response) => {
     ]);
 
     const latencyMs = Date.now() - startTime;
+    console.log("=== AGENT RESULT ===");
+    console.log(JSON.stringify(result, null, 2));
     const answer = result.text;
 
     // Build the execution pipeline logs from steps

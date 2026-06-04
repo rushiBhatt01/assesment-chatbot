@@ -23,6 +23,5 @@ Your text-generation pipeline is bound under zero-tolerance grounding constraint
   model: 'google/gemini-2.5-flash-lite',
   tools: { queryTransactionsTool, detectSubscriptionsTool, computeInvestmentAnalyticsTool, retrieveAsyncJobResultTool },
   maxSteps: 5, // Infinite loop defense guardrail
-  memory: new Memory(),
 });
 
