@@ -8,7 +8,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const PORT = process.env.PORT || 3000;
+const PORT = Number(process.env.PORT)|| 3000;
 const taraAgent = mastra.getAgent('taraAgent');
 
 function sanitizePayload(args: any): any {
