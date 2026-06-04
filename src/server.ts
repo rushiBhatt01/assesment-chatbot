@@ -244,6 +244,6 @@ app.get('/jobs/:job_id', async (req: express.Request, res: express.Response) => 
   }
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, "0.0.0.0", () => {
   console.log(`Express server listening on port ${PORT}`);
 });
