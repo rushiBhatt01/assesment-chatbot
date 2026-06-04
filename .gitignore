@@ -1,10 +1,90 @@
-output.txt 
-node_modules 
-dist 
-.mastra 
-.env.development 
-.env 
-*.db 
-*.db-* 
-.netlify 
-.vercel 
+# Dependency directories
+node_modules/
+jspm_packages/
+web_modules/
+
+# Build and Output
+dist/
+build/
+out/
+.next/
+.nuxt/
+.mastra/
+bin/
+obj/
+output.txt
+
+# IDEs and Editors
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.DS_Store
+Thumbs.db
+
+# Agent and CodeGraph tools
+.agents/
+.codegraph/
+_bmad-output/
+
+# Environment and Secrets
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+.env*.local
+
+# Database / Storage (Mastra, SQLite, DuckDB, etc.)
+*.db
+*.db-*
+*.duckdb
+*.duckdb.*
+*.sqlite
+*.sqlite3
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS metadata
+.DS_Store
+.DS_Store?
+ehthumbs.db
+Icon?
+
+# Diagnostic reports
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+# Vercel / Netlify / Serverless
+.vercel/
+.netlify/
+.serverless/
+
+# Temporary data / archives
+*.zip
+*.tar.gz
+*.tgz
+*.rar
+
+# Assignment files and local docs (so they won't be pushed to GitHub)
+Provue_Engineering_Assignment.md
+Provue_Engineering_Assignment.pdf
+docs/
+provue_requirements_alignment_audit.md
+Provue_*.md
+Provue_Engineering_Assignment.md
+Provue_Engineering_Assignment.pdf
+docs/
+# Weather agent code
+src/mastra/agents/weather-agent.ts
+src/mastra/tools/weather-tool.ts
+src/mastra/workflows/weather-workflow.ts
+src/mastra/scorers/weather-scorer.ts 
