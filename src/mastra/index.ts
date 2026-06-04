@@ -5,14 +5,17 @@ import { DuckDBStore } from "@mastra/duckdb";
 import { MastraCompositeStore } from '@mastra/core/storage';
 import { Observability, MastraStorageExporter, MastraPlatformExporter, SensitiveDataFilter } from '@mastra/observability';
 import { taraAgent } from './agents/tara-agent';
+import { taraFinancialReportWorkflow } from './workflows/tara-workflow';
+import { scorers } from './scorers/tara-scorer';
 
 console.log("!!! GOOGLE_API_KEY IS:", process.env.GOOGLE_API_KEY ? "DEFINED" : "UNDEFINED");
 
 
 export const mastra = new Mastra({
-  workflows: {},
+  workflows: { taraFinancialReportWorkflow },
   agents: { taraAgent },
-  scorers: {},
+  scorers: scorers,
+
   storage: new MastraCompositeStore({
     id: 'composite-storage',
     default: new LibSQLStore({
