@@ -6,6 +6,9 @@ import { MastraCompositeStore } from '@mastra/core/storage';
 import { Observability, MastraStorageExporter, MastraPlatformExporter, SensitiveDataFilter } from '@mastra/observability';
 import { taraAgent } from './agents/tara-agent';
 
+console.log("!!! GOOGLE_API_KEY IS:", process.env.GOOGLE_API_KEY ? "DEFINED" : "UNDEFINED");
+
+
 export const mastra = new Mastra({
   workflows: {},
   agents: { taraAgent },
