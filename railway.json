@@ -1,0 +1,15 @@
+{
+  "$schema": "https://railway.com/railway.schema.json",
+  "build": {
+    "builder": "NIXPACKS",
+    "watchPatterns": [
+      "src/**",
+      "package.json"
+    ]
+  },
+  "deploy": {
+    "startCommand": "npx tsx src/server.ts & npx tsx src/workers/jobWorker.ts",
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 5
+  }
+}
