@@ -53,13 +53,13 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
-
+test1.md
 # OS metadata
 .DS_Store
 .DS_Store?
 ehthumbs.db
 Icon?
-
+eval_*.txt
 # Diagnostic reports
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 

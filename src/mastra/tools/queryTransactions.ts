@@ -9,11 +9,11 @@ export const queryTransactionsTool = createTool({
   inputSchema: z.object({
     merchantPattern: z.string().optional().describe('Fuzzy merchant name to match. Uses trigram similarity matching.'),
     categoryFilter: z.string().optional().describe('Target category filter. E.g. health, food, groceries. Transfers are automatically excluded.'),
-    startDate: z.string().describe('Start date boundary (ISO 8601 format, YYYY-MM-DD or YYYY-MM-DDTHH:mm:ssZ).'),
-    endDate: z.string().describe('End date boundary (ISO 8601 format, YYYY-MM-DD or YYYY-MM-DDTHH:mm:ssZ).'),
-    metricsOperation: z.enum(['RAW_LIST', 'SUM', 'MONTH_OVER_MONTH_TREND', 'TOP_MERCHANTS_RANKING'])
+    startDate: z.string().optional().describe('Start date boundary (ISO 8601 format, YYYY-MM-DD). Defaults to 2024-01-01 if omitted.'),
+    endDate: z.string().optional().describe('End date boundary (ISO 8601 format, YYYY-MM-DD). Defaults to today if omitted.'),
+    metricsOperation: z.enum(['RAW_LIST', 'SUM', 'MONTH_OVER_MONTH_TREND', 'TOP_MERCHANTS_RANKING', 'CATEGORY_BREAKDOWN'])
       .default('SUM')
-      .describe('The operation to execute: SUM for total spend, RAW_LIST for transaction history list, MONTH_OVER_MONTH_TREND for spending over time, TOP_MERCHANTS_RANKING for highest spend merchants.'),
+      .describe('The operation to execute: SUM for total spend, RAW_LIST for transaction history list, MONTH_OVER_MONTH_TREND for spending over time, TOP_MERCHANTS_RANKING for highest spend merchants, CATEGORY_BREAKDOWN for per-category spending totals.'),
     includeRefunds: z.boolean()
       .default(false)
       .describe('When true, includes refund transactions (negative amounts) in totals, netting them against expenses. When false (default), only positive expense amounts are summed.'),
@@ -36,9 +36,9 @@ export const queryTransactionsTool = createTool({
       return asyncTrigger;
     }
 
-    // Standardize input date formats to ISO strings
-    const startIso = new Date(startDate).toISOString();
-    const endIso = new Date(endDate).toISOString();
+    // Standardize input date formats to ISO strings, with sensible defaults
+    const startIso = startDate ? new Date(startDate).toISOString() : new Date('2024-01-01').toISOString();
+    const endIso = endDate ? new Date(endDate).toISOString() : new Date().toISOString();
 
     const response = await pgDataRepository.advancedLedgerQuery({
       merchant: merchantPattern,

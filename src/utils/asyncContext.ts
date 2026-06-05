@@ -5,6 +5,7 @@ import crypto from 'crypto';
 export interface AsyncRequestContext {
   isAsync: boolean;
   question: string;
+  jobId?: string;
 }
 
 export const asyncLocalStorage = new AsyncLocalStorage<AsyncRequestContext>();
@@ -16,14 +17,15 @@ export const asyncLocalStorage = new AsyncLocalStorage<AsyncRequestContext>();
  */
 export async function checkAndTriggerAsync(toolName: string, args: any): Promise<{ job_id: string; status: 'running' } | null> {
   const context = asyncLocalStorage.getStore();
+  console.log('=== checkAndTriggerAsync Context ===', context, 'for tool:', toolName);
   if (context && context.isAsync) {
-    const jobId = crypto.randomUUID();
+    const jobId = context.jobId || crypto.randomUUID();
     await query(
       `INSERT INTO async_execution_jobs (job_id, status, payload_input)
        VALUES ($1, 'PENDING', $2)`,
       [jobId, JSON.stringify({ question: context.question, tool: toolName, args })]
     );
-    return { job_id: jobId, status: 'running' };
+    throw new Error(`ASYNC_JOB_STARTED:${jobId}`);
   }
   return null;
 }

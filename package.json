@@ -7,7 +7,8 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "mastra dev",
     "build": "mastra build",
-    "start": "mastra start",
+    "start:mastra": "mastra start",
+    "start": "tsx src/server.ts && tsx src/workers/jobWorker.ts",
     "server": "tsx src/server.ts",
     "ingest": "tsx src/scripts/ingest.ts",
     "eval": "tsx src/scripts/eval.ts",
@@ -34,6 +35,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/node": "^25.9.1",
     "mastra": "^1.11.0",

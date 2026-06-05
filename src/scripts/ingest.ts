@@ -40,22 +40,22 @@ async function runIngest() {
     // 4. Ingest Transactions
     console.log('Inserting transactions in batches...');
     let insertedTransactions = 0;
-    const validTransactions = transactions.filter((tx: any) => 
+    const validTransactions = transactions.filter((tx: any) =>
       tx.id && tx.date && tx.merchant && tx.category && tx.amount !== undefined && tx.currency
     );
-    
+
     const txChunkSize = 200;
     for (let i = 0; i < validTransactions.length; i += txChunkSize) {
       const chunk = validTransactions.slice(i, i + txChunkSize);
       const valuePlaceholders: string[] = [];
       const values: any[] = [];
       let paramIndex = 1;
-      
+
       for (const tx of chunk) {
         valuePlaceholders.push(`($${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++})`);
         values.push(tx.id, tx.date, tx.merchant, tx.category, tx.amount, tx.currency, tx.memo || null);
       }
-      
+
       await query(
         `INSERT INTO transactions (id, date, merchant, category, amount, currency, memo)
          VALUES ${valuePlaceholders.join(', ')}
@@ -69,27 +69,27 @@ async function runIngest() {
     // 5. Ingest Funds
     console.log('Inserting funds in batches...');
     let insertedFunds = 0;
-    const validFunds = funds.filter((fund: any) => 
+    const validFunds = funds.filter((fund: any) =>
       fund.id && fund.name && fund.category && fund.nav
     );
-    
+
     const fundChunkSize = 100;
     for (let i = 0; i < validFunds.length; i += fundChunkSize) {
       const chunk = validFunds.slice(i, i + fundChunkSize);
       const valuePlaceholders: string[] = [];
       const values: any[] = [];
       let paramIndex = 1;
-      
+
       for (const fund of chunk) {
         const mappedNavHistory = fund.nav.map((item: any) => ({
           date: item.date,
           nav: item.value !== undefined ? item.value : item.nav,
         }));
-        
+
         valuePlaceholders.push(`($${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++})`);
         values.push(fund.id, fund.name, fund.category, JSON.stringify(mappedNavHistory));
       }
-      
+
       await query(
         `INSERT INTO funds (id, name, category, nav_history)
          VALUES ${valuePlaceholders.join(', ')}
@@ -104,35 +104,35 @@ async function runIngest() {
     console.log('Inserting holdings in batches...');
     let insertedHoldings = 0;
     const validHoldings: any[] = [];
-    
+
     for (const holding of holdings) {
       if (!holding.fund_id || !holding.fund_name || holding.units === undefined || !holding.purchase_date || holding.purchase_nav === undefined) {
         console.warn(`Skipping malformed holding row: ${JSON.stringify(holding)}`);
         continue;
       }
-      
+
       // Verify that the fund exists before inserting holding
       const checkFund = await query('SELECT 1 FROM funds WHERE id = $1', [holding.fund_id]);
       if (checkFund.rowCount === 0) {
         console.warn(`Skipping holding for non-existent fund: ${holding.fund_id}`);
         continue;
       }
-      
+
       validHoldings.push(holding);
     }
-    
+
     const holdingChunkSize = 100;
     for (let i = 0; i < validHoldings.length; i += holdingChunkSize) {
       const chunk = validHoldings.slice(i, i + holdingChunkSize);
       const valuePlaceholders: string[] = [];
       const values: any[] = [];
       let paramIndex = 1;
-      
+
       for (const holding of chunk) {
         valuePlaceholders.push(`($${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++})`);
         values.push(holding.fund_id, holding.fund_name, holding.units, holding.purchase_date, holding.purchase_nav);
       }
-      
+
       await query(
         `INSERT INTO holdings (fund_id, fund_name, units, purchase_date, purchase_nav)
          VALUES ${valuePlaceholders.join(', ')}`,

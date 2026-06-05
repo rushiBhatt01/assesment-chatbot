@@ -5,7 +5,7 @@ export interface LedgerQueryInput {
   category?: string;
   start: string;
   end: string;
-  operationMode: 'RAW_LIST' | 'SUM' | 'MONTH_OVER_MONTH_TREND' | 'TOP_MERCHANTS_RANKING';
+  operationMode: 'RAW_LIST' | 'SUM' | 'MONTH_OVER_MONTH_TREND' | 'TOP_MERCHANTS_RANKING' | 'CATEGORY_BREAKDOWN';
   includeRefunds?: boolean;
 }
 
@@ -180,6 +180,21 @@ export class PgRepo {
           WHERE ${whereClauses.join(' AND ')}
           GROUP BY TO_CHAR(t.date, 'YYYY-MM')
           ORDER BY month ASC
+        `;
+        break;
+
+      case 'CATEGORY_BREAKDOWN':
+        queryText = `
+          ${merchantCTE}
+          SELECT 
+            t.category AS category_name,
+            COALESCE(SUM(t.amount), 0.00) AS total_spend,
+            COUNT(*) AS transaction_count
+          FROM transactions t
+          ${merchantJoin}
+          WHERE ${whereClauses.join(' AND ')}
+          GROUP BY t.category
+          ORDER BY total_spend DESC
         `;
         break;
 

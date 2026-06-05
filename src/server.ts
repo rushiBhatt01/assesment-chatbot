@@ -45,26 +45,54 @@ app.post('/ask', async (req: express.Request, res: express.Response) => {
   const tablesAccessed: string[] = [];
 
   try {
-    // Execute the agent turn
-    const result = await taraAgent.generate([
-      {
-        role: 'user',
-        content: question,
-      },
-    ]);
+    // Execute the agent turn with retries for transient LLM API errors (like 503) or empty responses
+    let result: any;
+    let attempts = 0;
+    const maxAttempts = 3;
+    while (attempts < maxAttempts) {
+      try {
+        attempts++;
+        result = await taraAgent.generate([
+          {
+            role: 'user',
+            content: question,
+          },
+        ]);
+        
+        // Retry if response is empty
+        if (!result.text || result.text.trim().length === 0) {
+          console.log(`Empty agent response detected on attempt ${attempts}.`);
+          if (attempts < maxAttempts) {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            continue;
+          }
+        }
+        
+        break; // Success
+      } catch (err: any) {
+        console.error(`Agent generation failed on attempt ${attempts}:`, err.message);
+        if (attempts >= maxAttempts) {
+          throw err;
+        }
+        // Wait a bit before retrying
+        await new Promise(resolve => setTimeout(resolve, 3000));
+      }
+    }
 
     const latencyMs = Date.now() - startTime;
     console.log("=== AGENT RESULT ===");
     console.log(JSON.stringify(result, null, 2));
-    const answer = result.text;
+    const answer = result.text && result.text.trim().length > 0
+      ? result.text
+      : 'I was unable to generate a response for your question. Please try rephrasing or being more specific.';
 
     // Build the execution pipeline logs from steps
     const steps = result.steps || [];
-    steps.forEach((step, idx) => {
+    steps.forEach((step: any, idx: number) => {
       const toolCalls = step.toolCalls || [];
       const toolResults = step.toolResults || [];
 
-      toolCalls.forEach((call) => {
+      toolCalls.forEach((call: any) => {
         const toolName = call.payload?.toolName || (call as any).toolName;
         const callArgs = call.payload?.args || (call as any).args;
         const callId = call.payload?.toolCallId || (call as any).toolCallId;
@@ -98,8 +126,8 @@ app.post('/ask', async (req: express.Request, res: express.Response) => {
     });
 
     // Detect if no data was returned
-    const hasEmptyPayload = pipeline.length > 0 && result.steps.some(step => {
-      return (step.toolResults || []).some(res => {
+    const hasEmptyPayload = pipeline.length > 0 && result.steps.some((step: any) => {
+      return (step.toolResults || []).some((res: any) => {
         const resultVal = res.payload?.result || (res as any).result;
         const payload = (resultVal as any)?.payload;
         return Array.isArray(payload) && payload.length === 0;
@@ -116,6 +144,13 @@ app.post('/ask', async (req: express.Request, res: express.Response) => {
       intent = 'EMPTY_DATA_EXCEPTION';
     }
 
+    // Extract token usage if available
+    const tokenUsage = result.usage ? {
+      promptTokens: result.usage.promptTokens,
+      completionTokens: result.usage.completionTokens,
+      totalTokens: result.usage.totalTokens,
+    } : undefined;
+
     // Structured Log Output conforming to ObservabilityAuditRecord
     const auditRecord = {
       traceId,
@@ -126,11 +161,23 @@ app.post('/ask', async (req: express.Request, res: express.Response) => {
       storageTablesAccessed: tablesAccessed,
       runtimeProcessingLatencyMs: latencyMs,
       terminalExecutionStatus: status,
+      tokenUsage,
     };
 
     console.log(JSON.stringify(auditRecord));
 
-    res.json({ answer });
+    res.json({
+      answer,
+      status: 'SUCCESS',
+      meta: {
+        traceId,
+        latencyMs,
+        intent,
+        tablesAccessed,
+        executionPipeline: pipeline,
+        tokenUsage,
+      }
+    });
   } catch (err: any) {
     status = 'CRITICAL_EXCEPTION_STATE';
     const latencyMs = Date.now() - startTime;
@@ -153,7 +200,17 @@ app.post('/ask', async (req: express.Request, res: express.Response) => {
 
     console.error(JSON.stringify(auditRecord));
 
-    res.status(500).json({ error: exceptionPayload.sanitizedErrorMessage });
+    res.status(500).json({
+      error: exceptionPayload.sanitizedErrorMessage,
+      status: 'CRITICAL_EXCEPTION_STATE',
+      meta: {
+        traceId,
+        latencyMs,
+        intent: 'EMPTY_DATA_EXCEPTION',
+        tablesAccessed,
+        executionPipeline: pipeline,
+      }
+    });
   }
 });
 
@@ -176,33 +233,31 @@ app.post('/ask/async', async (req: express.Request, res: express.Response) => {
   }
 
   try {
-    const context = { isAsync: true, question };
-    const agentResult = await asyncLocalStorage.run(context, async () => {
-      return await taraAgent.generate([
-        { role: 'user', content: question },
-      ]);
+    const jobId = crypto.randomUUID();
+
+    // Start background agent execution inside AsyncLocalStorage context
+    asyncLocalStorage.run({ isAsync: true, question, jobId }, () => {
+      taraAgent.generate([
+        {
+          role: 'user',
+          content: question,
+        },
+      ]).then((result: any) => {
+        console.log(`Async background agent execution initiated for job ${jobId}`);
+      }).catch((err: any) => {
+        console.error(`Error in async background agent execution for job ${jobId}:`, err);
+      });
     });
 
-    // Check steps and toolResults for job_id
-    let jobId: string | undefined;
-    for (const step of agentResult.steps || []) {
-      for (const resVal of step.toolResults || []) {
-        const val = resVal.result || (resVal as any).payload;
-        if (val && typeof val === 'object' && 'job_id' in val) {
-          jobId = val.job_id;
-          break;
-        }
+    res.json({
+      job_id: jobId,
+      status: 'running',
+      meta: {
+        ingressTimestamp: new Date().toISOString()
       }
-      if (jobId) break;
-    }
-
-    if (jobId) {
-      res.json({ job_id: jobId, status: 'running' });
-    } else {
-      res.json({ answer: agentResult.text });
-    }
+    });
   } catch (err: any) {
-    res.status(500).json({ error: err.message || 'Failed to create async job.' });
+    res.status(500).json({ error: err.message || 'Failed to initiate async job.' });
   }
 });
 

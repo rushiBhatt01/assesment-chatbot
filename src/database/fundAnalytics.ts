@@ -88,8 +88,9 @@ export async function calculatePeriodReturn(input: {
  */
 export async function calculateHoldingReturn(input: {
   fundName?: string;
+  includeSummary?: boolean;
 }) {
-  const { fundName } = input;
+  const { fundName, includeSummary } = input;
 
   let queryText = `
     WITH LatestNav AS (
@@ -125,7 +126,7 @@ export async function calculateHoldingReturn(input: {
 
   const result = await query(queryText, params);
 
-  return result.rows.map((r: any) => ({
+  const rows = result.rows.map((r: any) => ({
     fund_id: r.fund_id,
     fund_name: r.fund_name,
     units: Number(r.units),
@@ -135,4 +136,22 @@ export async function calculateHoldingReturn(input: {
     purchase_cost_inr: Number(r.purchase_cost_inr),
     realized_return_inr: Number(r.realized_return_inr),
   }));
+
+  if (includeSummary && !fundName && rows.length > 0) {
+    const totalCurrentValue = rows.reduce((sum: number, r: any) => sum + r.current_value_inr, 0);
+    const totalPurchaseCost = rows.reduce((sum: number, r: any) => sum + r.purchase_cost_inr, 0);
+    const totalRealizedReturn = rows.reduce((sum: number, r: any) => sum + r.realized_return_inr, 0);
+    rows.push({
+      fund_id: 'TOTAL',
+      fund_name: 'TOTAL_PORTFOLIO',
+      units: 0,
+      purchase_nav: 0,
+      current_nav: 0,
+      current_value_inr: Number(totalCurrentValue.toFixed(2)),
+      purchase_cost_inr: Number(totalPurchaseCost.toFixed(2)),
+      realized_return_inr: Number(totalRealizedReturn.toFixed(2)),
+    });
+  }
+
+  return rows;
 }

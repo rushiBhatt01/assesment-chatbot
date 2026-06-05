@@ -45,7 +45,7 @@ export const computeInvestmentAnalyticsTool = createTool({
         return { results: data };
       }
       case 'HOLDING_RETURN': {
-        const data = await calculateHoldingReturn({ fundName });
+        const data = await calculateHoldingReturn({ fundName, includeSummary: true });
         return { results: data };
       }
       default:

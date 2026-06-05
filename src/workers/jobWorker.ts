@@ -79,6 +79,7 @@ async function processPendingJobs() {
       } else if (args.operation === 'HOLDING_RETURN') {
         result = await calculateHoldingReturn({
           fundName: args.fundName,
+          includeSummary: true,
         });
       } else {
         throw new Error(`Unknown investment analytics operation: ${args.operation}`);
@@ -104,9 +105,31 @@ async function processPendingJobs() {
 </async_tool_completion>`;
 
     console.log(`Executing background agent turn for job ${jobId}...`);
-    const agentResult = await taraAgent.generate([
-      { role: 'user', content: syntheticMessage }
-    ]);
+    let agentResult: any;
+    let attempts = 0;
+    const maxAttempts = 3;
+    while (attempts < maxAttempts) {
+      try {
+        attempts++;
+        agentResult = await taraAgent.generate([
+          { role: 'user', content: syntheticMessage }
+        ]);
+        if (!agentResult.text || agentResult.text.trim().length === 0) {
+          console.log(`Empty background agent response detected on attempt ${attempts}.`);
+          if (attempts < maxAttempts) {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            continue;
+          }
+        }
+        break;
+      } catch (err: any) {
+        console.error(`Background agent generation failed on attempt ${attempts}:`, err.message);
+        if (attempts >= maxAttempts) {
+          throw err;
+        }
+        await new Promise(resolve => setTimeout(resolve, 3000));
+      }
+    }
 
     const finalAnswer = agentResult.text || '';
     console.log(`Job ${jobId} finished. Final answer: "${finalAnswer.slice(0, 60)}..."`);

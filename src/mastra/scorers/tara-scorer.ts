@@ -50,8 +50,9 @@ export const strictGroundingScorer = createScorer({
     
     // Extract tool results from the run log
     const toolResults: any[] = [];
-    if (run.steps) {
-      run.steps.forEach(step => {
+    const runSteps = (run as any).steps;
+    if (runSteps) {
+      runSteps.forEach((step: any) => {
         if (step.toolResults) {
           step.toolResults.forEach((tr: any) => {
             toolResults.push(tr.result || tr.payload);
