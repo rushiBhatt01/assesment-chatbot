@@ -409,6 +409,3 @@ To guarantee 100% mathematical grounding and prevent LLM hallucinations:
 1. **Concurrency and Connection Caps:** Operating the database and API concurrently on a single container under peak concurrent requests might exhaust node memory or connection pools.
 2. **Highly Composite Prompts:** Sentence prompts asking for multiple independent nested comparisons (e.g. "compare Swiggy to Zepto and fund X to Y") can sometimes lead to incomplete tool extraction sequences.
 
-### With More Time, We Would:
-1. **Semantic Vector Search:** Implement semantic search embeddings for categorizing memos instead of relying entirely on category codes.
-2. **Service Isolation:** Move the worker queue (e.g., BullMQ) and API servers into separate scalable microservices.
