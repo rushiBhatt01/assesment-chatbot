@@ -12,6 +12,7 @@
     "server": "tsx src/server.ts",
     "ingest": "tsx src/scripts/ingest.ts",
     "eval": "tsx src/scripts/eval.ts",
+    "eval-multi": "tsx src/scripts/eval_multi.ts",
     "worker": "tsx src/workers/jobWorker.ts"
   },
   "keywords": [],

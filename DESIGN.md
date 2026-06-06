@@ -134,6 +134,12 @@ CREATE INDEX idx_funds_nav_history_gin ON funds USING GIN (nav_history);
 CREATE INDEX idx_async_jobs_status_created ON async_execution_jobs (status, created_at);
 ```
 
+### Schema Design Decisions ("Why")
+* **JSONB for `nav_history`:** Storing monthly historical NAV points as a JSONB array inside the `funds` table avoids massive 1-to-many historical table joins and simplifies monthly NAV retrievals into self-contained query rows.
+* **ON DELETE CASCADE:** Set on `holdings` -> `funds` to guarantee that deleting a mutual fund automatically cleans up user holdings and prevents orphan data.
+* **GIST Index with `gist_trgm_ops`:** Created on `transactions(merchant)` to support fast, trigram-based fuzzy string matching (`pg_trgm`) at index speed, handling NEFT/UPI variants.
+* **Covering Composite Index:** The composite index on `transactions (category, date, merchant) INCLUDE (amount)` allows the database engine to run Index Only Scans for spend queries, retrieving the amount directly from the index nodes without reading raw table blocks.
+
 ---
 
 ## 3. Tool Design
@@ -289,6 +295,12 @@ To prevent leaking sensitive information:
 ### Infinite Loop Protection
 The agent turns are configured with a `maxSteps: 10` guardrail. If an execution pipeline loops or attempts to call tools more than 10 times on a single turn, the system terminates execution and returns a clean failure message.
 
+### How to Inspect a Failed Run
+1. Retrieve the `traceId` from the response's metadata payload or from the `ObservabilityAuditRecord` logged under standard execution.
+2. Locate the matching record in the server log (or Mastra storage database `/file:./mastra.db`).
+3. Check the `terminalExecutionStatus`, which will indicate `CRITICAL_EXCEPTION_STATE` or `DATA_ABANDON_EMPTY` instead of `SUCCESS`.
+4. Inspect the `systemExceptionPayload` field containing the raw error stack trace and error message, and examine the `toolCallExecutionPipeline` steps to pinpoint exactly which database tool or argument triggered the issue.
+
 ---
 
 ## 7. Asynchronous Architecture & Worker
@@ -345,3 +357,58 @@ For enhanced developer diagnostics and client observability, the HTTP endpoints 
   }
 }
 ```
+
+---
+
+## 9. Production Deployment & Tradeoffs
+
+### Live Environment
+* **Platform:** Railway (built using Nixpacks)
+* **Base URL:** `https://assesment-chatbot-production.up.railway.app`
+* **Database:** Hosted PostgreSQL.
+
+### Architecture Considerations
+1. **Parallel Worker Orchestration:** To utilize a single Railway container, both the Express API and the out-of-band Background Job Worker are booted concurrently in the background (using `tsx src/server.ts & tsx src/workers/jobWorker.ts` as the startup script). For higher scale, these would ideally be split into separate API and worker services.
+
+---
+
+## 10. Grounding & Hallucination Prevention
+
+To guarantee 100% mathematical grounding and prevent LLM hallucinations:
+1. **Math Decoupling:** The LLM is programmatically barred from executing calculations. Sums, MoM growth trends, and percentage returns are executed purely via SQL queries in [pgRepo.ts](file:///c:/Users/Rushi/OneDrive/Desktop/FILES/DEVPROJECT/New%20folder/tara/src/database/pgRepo.ts) or TypeScript math helpers.
+2. **Instruction Enforcement:** The system instructions in [tara-agent.ts](file:///c:/Users/Rushi/OneDrive/Desktop/FILES/DEVPROJECT/New%20folder/tara/src/mastra/agents/tara-agent.ts) mandate quoting figures verbatim from the tool results, responding with a standard "No data was found..." if empty, and ignoring free-text memos.
+3. **Structured Portfolio Aggregates:** The investment analytics tool returns a pre-aggregated `TOTAL_PORTFOLIO` summary row, eliminating the need for the LLM to sum individual holding rows.
+
+---
+
+## 11. Evaluation Framework
+
+* **Test Harness:** The integration tests in [eval.ts](file:///c:/Users/Rushi/OneDrive/Desktop/FILES/DEVPROJECT/New%20folder/tara/src/scripts/eval.ts) boot up child processes for both the Express API and the job worker, submit async/sync requests to the localhost API, poll for status completion, verify actual prose answers against programmatically fetched expected database totals, and terminate cleanly.
+* **Test Case Coverage:** Includes 13 test scenarios covering:
+  - Single lookups & date scopes (TC #1, #3, #6)
+  - Refund netting & transfers exclusion (TC #1, #3)
+  - Merchant alias matching (TC #2)
+  - Category growth/MoM comparison (TC #4)
+  - No-data conditions (TC #5)
+  - Recurring subscription detection (TC #7)
+  - Fund period return calculations (TC #8, #9)
+  - Holding realized yields & aggregate portfolio worth (TC #10, #11, #12)
+
+---
+
+## 12. Asynchronous Agent State Handling
+
+* **In-Progress State:** When a slow tool executes, it registers a UUID `job_id` under `async_execution_jobs` table in `PENDING` status, throws `ASYNC_JOB_STARTED`, and immediately yields control back to the Express controller, returning `status: "running"` to the client.
+* **Completed State:** The job worker fetches the pending job, executes the query, triggers a synthetic agent turn feeding the query results into the agent model to write the natural language response, saves the formatted text under `final_answer` column, and marks status as `COMPLETED`. The client polling the status endpoint receives the completed response.
+
+---
+
+## 13. Potential Failure Modes & Future Improvements
+
+### Potential Failure Modes
+1. **Concurrency and Connection Caps:** Operating the database and API concurrently on a single container under peak concurrent requests might exhaust node memory or connection pools.
+2. **Highly Composite Prompts:** Sentence prompts asking for multiple independent nested comparisons (e.g. "compare Swiggy to Zepto and fund X to Y") can sometimes lead to incomplete tool extraction sequences.
+
+### With More Time, We Would:
+1. **Semantic Vector Search:** Implement semantic search embeddings for categorizing memos instead of relying entirely on category codes.
+2. **Service Isolation:** Move the worker queue (e.g., BullMQ) and API servers into separate scalable microservices.

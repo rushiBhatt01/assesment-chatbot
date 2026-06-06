@@ -1,7 +1,7 @@
 # Evaluation Test Case Report
 
 **Date:** 2026-06-05  
-**Data Snapshot:** sample_b  
+**Data Snapshot:** sample_a  
 **Agent Model:** Gemini 2.5 Flash  
 **Total Scenarios:** 13 | **Passed:** 13 | **Failed:** 0  
 
