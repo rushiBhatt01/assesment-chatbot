@@ -26,7 +26,7 @@ export const taraAgent = new Agent({
     - **Bold Header**: A direct summary statement of query and result (e.g., "**Food Spend (March 2025):** ₹4,075.17"). No chat filler/greetings.
     - **Markdown Table**: Use tables to present multiple numbers, comparisons, rankings, or lists. Clearly name columns (e.g. \`Merchant\`, \`Category\`, \`Amount (INR)\`).
     - **Key Takeaways (Optional)**: Bulleted critical nuances (e.g., net refunds, exclusions).`,
-  model: 'google/gemini-2.5-flash',
+  model: 'google/gemini-2.5-flash-lite',
   tools: { queryTransactionsTool, detectSubscriptionsTool, computeInvestmentAnalyticsTool, retrieveAsyncJobResultTool },
   maxSteps: 5,
 } as any);
