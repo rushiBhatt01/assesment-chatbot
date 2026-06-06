@@ -141,3 +141,23 @@ The test harness will:
 4. Poll the `/jobs/:job_id` endpoint until `status` is `COMPLETED`.
 5. Verify that the returned answer contains the correctly calculated database values.
 6. Cleanly terminate all child processes upon completion.
+
+---
+
+## 7. Production Deployment
+
+The application is deployed live on **Railway** connected to a managed PostgreSQL database instance.
+
+* **Base Production URL:** `https://assesment-chatbot-production.up.railway.app`
+* **API Endpoint (Sync):**
+  ```bash
+  curl -X POST https://assesment-chatbot-production.up.railway.app/ask \
+    -H "Content-Type: application/json" \
+    -d '{"question": "How much did I spend on food in March 2025?"}'
+  ```
+* **API Endpoint (Async):**
+  ```bash
+  curl -X POST https://assesment-chatbot-production.up.railway.app/ask/async \
+    -H "Content-Type: application/json" \
+    -d '{"question": "What is my total portfolio worth?"}'
+  ```
